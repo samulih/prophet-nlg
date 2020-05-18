@@ -1,0 +1,6 @@
+ndjson
+nltk
+numpy
+pytest
+syntaxmaker
+uralicNLP
