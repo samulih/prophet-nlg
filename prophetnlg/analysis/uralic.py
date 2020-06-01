@@ -1,16 +1,54 @@
-from typing import Iterator
+from typing import Iterable, Iterator, List, Tuple
 from prophetnlg import Sentence, SentenceToken, WordAnalysis
-from uralicNLP import uralicApi, dependency
+from uralicNLP import cg3, dependency, uralicApi
 from uralicNLP.ud_tools import UD_node, UD_sentence
 from .base import SentenceAnalyzer
 
+Cg3Token = Tuple[str, List[cg3.Cg3Word]]
+
 
 class UralicSentenceAnalyzer(SentenceAnalyzer):
-    def analyze_token(self, token: SentenceToken) -> SentenceToken:
-        morphologies = [
-            a[0] for a in uralicApi.analyze(token.text, language=self.lang)
-        ]
-        token = token.with_analysis(morphologies, 'uralic')
+    def __init__(self):
+        self.cg = cg3.Cg3(self.lang)
+
+    def disambiguate(self, words: Iterable[str]) -> List[Cg3Token]:
+        words = list(words)
+        cg_tokens = self.cg.disambiguate(words)
+        assert len(words) == len(cg_tokens)
+        return cg_tokens
+
+    def analyze_sentence(self, sentence: Sentence) -> Sentence:
+        tokens = list(sentence.tokens)
+        disambiguated = self.disambiguate([t.text for t in tokens])
+        tokens = [self.analyze_token(t, d) for t, d in zip(tokens, disambiguated)]
+        return sentence._replace(tokens=tokens)
+
+    def _cg_token_lemma_morphology_pos(self, cg_token: Cg3Token) -> Tuple[str, str, str]:
+        lemma, cg_words = cg_token
+        # TODO: use cg only in case of single match and resolve later?
+        #if len(cg_words) > 1:
+        #    return '', '', ''
+        lemma, morphology = cg_words[0].lemma, cg_words[0].morphology
+        return lemma, '+'.join(m for m in [lemma] + morphology if '<' not in m), morphology[0]
+
+    def analyze_token(self, token: SentenceToken, cg_token: Cg3Token = None) -> SentenceToken:
+        # analyze via uralic analyzer & disambiguate with CG
+
+        morphologies = [a[0] for a in uralicApi.analyze(token.text, language=self.lang)]
+        token = token.with_analysis(morphologies, 'uralic').with_analysis(cg_token, 'cg')
+
+        cg_lemma, cg_morphology, cg_pos = self._cg_token_lemma_morphology_pos(cg_token)
+        if cg_morphology in morphologies:
+            # disambiguation returned a viable alternative
+            # use CG lemma & morphology
+            return token._replace(
+                morphology=cg_morphology,
+                lemma=cg_lemma,
+                pos=cg_pos
+            )
+
+        # use uralic lemma & morphology if non-ambiguous
+
         morphologies = set(morphologies)
         lemmas = {m.split('+', 1)[0] for m in morphologies}
         lemmas_cap = {l.capitalize() for l in lemmas}

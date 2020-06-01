@@ -1,3 +1,4 @@
+import nltk
 from typing import Any, Dict, List, NamedTuple
 
 
@@ -27,8 +28,17 @@ class SentenceToken(NamedTuple):
         return self._replace(analyses=analyses)
 
 
+detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
+
+
 class Sentence(NamedTuple):
     tokens: List[SentenceToken]
+
+    def as_text(self):
+        return detokenizer.detokenize([t.text for t in self.tokens])
+
+
+class FinSentence(Sentence):
 
     def as_text(self):
         return ''.join(

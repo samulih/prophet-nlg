@@ -1,5 +1,5 @@
 from prophetnlg import Sentence
-from .annotate import WordAnnotationTransform
+from ..annotate import WordAnnotationTransform
 
 
 class FinWordAnnotationTransform(WordAnnotationTransform):

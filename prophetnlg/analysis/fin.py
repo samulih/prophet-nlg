@@ -69,15 +69,15 @@ class FinHeuristicSentenceAnalyzer(FinDepSentenceAnalyzer):
         lemma, pos, *_ = morph.split('+')
         word_morphologies = morph.split('#')
         compound = '#'.join(m.split('+', 1)[0] for m in word_morphologies)
-        return (
+        common_scored_items = (
             lemma == ud_lemma,
             compound == ud_lemma,
             lemma.lower() == ud_lemma.lower(),
             compound.lower() == ud_lemma.lower(),
             compound.lower().replace('#', '') == ud_lemma.lower().replace('#', ''),
             morph.count('Use/Hyphen') == token.text.count('-'),
-            len(morph)
         )
+        return common_scored_items + (len(morph),)
 
     def _best_morphology(self, token: SentenceToken, morphologies: List[str]) -> str:
         return sorted(
@@ -87,6 +87,8 @@ class FinHeuristicSentenceAnalyzer(FinDepSentenceAnalyzer):
         )[0]
 
     def _pick_morphology(self, token: SentenceToken, pos: str) -> str:
+        if token.morphology:
+            return token.morphology
         morphologies = token.analyses['uralic'].analysis
         morphology_parts = [m.split('#') for m in morphologies]
         morphologies_same_pos = [
@@ -114,6 +116,6 @@ class FinHeuristicSentenceAnalyzer(FinDepSentenceAnalyzer):
             self._pick_lemma_and_prefix(token, morphology)
         return token._replace(**attrs)
 
-    def analyze_token(self, token: SentenceToken) -> SentenceToken:
-        analyzed_token = super().analyze_token(token)
+    def analyze_token(self, token: SentenceToken, *args, **kwargs) -> SentenceToken:
+        analyzed_token = super().analyze_token(token, *args, **kwargs)
         return self._heuristic_analyze_token(analyzed_token)
