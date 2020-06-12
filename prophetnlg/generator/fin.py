@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import sqlite3
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from uralicNLP import uralicApi, semfi
 from prophetnlg import SentenceToken
 
@@ -47,20 +47,21 @@ class SentenceTokenGenerator:
     def __init__(self):
         self.similar_cache = {}
 
-    def _generate(self, analysis: str, similar_token: SentenceToken = None) -> str:
+    def _generate(self, analysis: str, similar_token: SentenceToken = None) -> Optional[str]:
         results = uralicApi.generate(analysis, language=self.lang)
-        if results:
-            words = [r[0] for r in results]
-            if similar_token:
-                # return the word that ends most similarly to reference token
-                return sorted(
-                    words,
-                    key=lambda w: len(common_suffix(w, similar_token.text)),
-                    reverse=True
-                )[0]
-            else:
-                # for example, Jari+N+Prop+Sg+Nom returns [Jari, Jarin]
-                return words[-1]
+        if not results:
+            return None
+        words = [r[0] for r in results]
+        if similar_token:
+            # return the word that ends most similarly to reference token
+            return sorted(
+                words,
+                key=lambda w: len(common_suffix(w, similar_token.text)),
+                reverse=True
+            )[0]
+        else:
+            # for example, Jari+N+Prop+Sg+Nom returns [Jari, Jarin]
+            return words[-1]
 
     def _replace_token_lemma(
         self,
@@ -84,12 +85,9 @@ class SentenceTokenGenerator:
             if '+N+Prop+' in new_morphology:
                 new_morphology = new_morphology.replace('+N+Prop+', '+N+')
         new_word = self._generate(new_morphology, similar_token=token)
-        return token._replace(
-            text=new_word,
-            lemma=new_lemma,
-            morphology=new_morphology,
-            analyses=[]
-        )
+        return token\
+            .replace(text=new_word, analyses={})\
+            .with_morphologies([new_morphology], 'guess')
 
     def _inflect_lemma_like(
         self,
@@ -118,4 +116,4 @@ class SentenceTokenGenerator:
         similar_lemma, suffix = find_similar_and_suffix(new_lemma, token.pos)
         similar_token = self._replace_token_lemma(token, similar_lemma)
         new_text = self._inflect_lemma_like(new_lemma, similar_token)
-        return new_token._replace(text=new_text)
+        return new_token.replace(text=new_text)

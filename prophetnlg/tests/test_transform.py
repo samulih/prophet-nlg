@@ -1,12 +1,12 @@
 from typing import Iterator
 import unittest
 from prophetnlg import SentenceToken
-from prophetnlg.analysis.fin import (
-    FinSentenceAnalyzer,
-    FinHeuristicSentenceAnalyzer
-)
+from prophetnlg.analysis.fin import FinHeuristicSentenceAnalyzer
 from prophetnlg.generator.fin import SentenceTokenGenerator
-from prophetnlg.transform.replace import LemmaReplaceStreamTransform
+from prophetnlg.transform.replace import (
+    LemmaReplaceStreamTransform,
+    LemmaMapStreamTransform
+)
 
 
 class TestReplaceTransform(unittest.TestCase):
@@ -41,3 +41,26 @@ class TestReplaceTransform(unittest.TestCase):
         source_sentence = next(self.analyzer.analyze_text('Pelle hyppäsi hassun aamun sarastaessa.'))
         new_sentence = transform.transform(source_sentence)
         self.assertEqual(new_sentence.as_text(), 'Pöllö hyppäsi syvän ajatuksen sarastaessa.')
+
+
+class TestMapTransform(unittest.TestCase):
+    def setUp(self):
+        self.analyzer = FinHeuristicSentenceAnalyzer()
+        self.generator = SentenceTokenGenerator()
+
+    def _get_text_tokens(self, text: str) -> Iterator[SentenceToken]:
+        sentences = self.analyzer.analyze_text(text)
+        for sentence in sentences:
+            for token in sentence.tokens:
+                yield token
+
+    def test_map_stream_transform(self):
+        replacements = self._get_text_tokens('Pöllöt miettivät syviä ajatuksia aamulla.')
+        transform = LemmaMapStreamTransform(
+            generator=self.generator,
+            replacement_stream=replacements,
+            replace_pos=['N', 'A']
+        )
+        source_sentence = next(self.analyzer.analyze_text('Jarno hyppäsi veteen - veden pintaa ui hassu Jarno.'))
+        new_sentence = transform.transform(source_sentence)
+        self.assertEqual(new_sentence.as_text(), 'Pöllö hyppäsi ajatukseen - ajatuksen aamua ui syvä pöllö.')

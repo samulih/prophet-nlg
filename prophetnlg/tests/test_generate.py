@@ -1,12 +1,12 @@
 import unittest
-from prophetnlg.analysis.fin import FinSentenceAnalyzer
+from prophetnlg.analysis.fin import FinHeuristicSentenceAnalyzer
 from prophetnlg.generator.fin import SentenceTokenGenerator
 
 
 class TestFinNounGenerator(unittest.TestCase):
     def setUp(self):
         # analyzer returns lemmas only with unambiguous analyses
-        self.analyzer = FinSentenceAnalyzer()
+        self.analyzer = FinHeuristicSentenceAnalyzer()
         self.generator = SentenceTokenGenerator()
 
     def test_generate(self):
@@ -42,7 +42,7 @@ class TestFinNounGenerator(unittest.TestCase):
 class TestFinVerbGenerator(unittest.TestCase):
     def setUp(self):
         # analyzer returns lemmas only with unambiguous analyses
-        self.analyzer = FinSentenceAnalyzer()
+        self.analyzer = FinHeuristicSentenceAnalyzer()
         self.generator = SentenceTokenGenerator()
 
     def test_generate(self):

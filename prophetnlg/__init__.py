@@ -1,47 +1,92 @@
+from __future__ import annotations
+import dataclasses
+from typing import Any, Generic, Dict, List, Optional
 import nltk
-from typing import Any, Dict, List, NamedTuple
 
 
-class WordAnalysis(NamedTuple):
+class DataClassMixin:
+    def replace(self, **attrs):
+        return dataclasses.replace(self, **attrs)
+
+
+@dataclasses.dataclass
+class WordAnalysis:
     text: str
-    analysis: Any
+    original: Any = None
+    morphologies: Optional[List[str]] = None
+
+    def get_morphologies(self):
+        return set(self.morphologies)
+
+    def get_lemmas(self):
+        return {m.split('+', 1)[0] for m in self.morphologies}
+
+    def get_pos(self):
+        return {m.split('+', 2)[1] for m in self.morphologies}
+
+    @property
+    def morphology(self):
+        morphologies = self.get_morphologies()
+        return next(iter(morphologies)) if len(morphologies) == 1 else ''
+
+    @property
+    def lemma(self):
+        lemmas = self.get_lemmas()
+        return next(iter(lemmas)) if len(lemmas) == 1 else ''
+
+    @property
+    def pos(self):
+        pos = self.get_pos()
+        return next(iter(pos)) if len(pos) == 1 else ''
 
 
-class SentenceToken(NamedTuple):
+@dataclasses.dataclass
+class SentenceToken(DataClassMixin):
     text: str
-    lemma: str = ''
-    pos: str = ''
     lang: str = ''
-    morphology: str = ''
-    prefix_morphology: str = ''
-    analyses: Dict[str, WordAnalysis] = {}
-    category: str = ''
+    analyses: Dict[str, WordAnalysis] = dataclasses.field(default_factory=dict)
     spaces_after: str = ' '
     cap: bool = False
 
-    def with_analysis(self, analysis: Any, analysis_type: str):
-        analyses = dict(
-            self.analyses, **{
-                analysis_type: WordAnalysis(text=self.text, analysis=analysis)
-            }
-        )
-        return self._replace(analyses=analyses)
+    def with_analysis(self, analysis: WordAnalysis, analysis_type: str) -> SentenceToken:
+        analyses = dict(self.analyses, **{analysis_type: analysis})
+        return self.replace(analyses=analyses)
+
+    def with_morphologies(self, morphologies: List[str], analysis_type: str) -> SentenceToken:
+        analysis = WordAnalysis(self.text, original=None, morphologies=morphologies)
+        return self.with_analysis(analysis, analysis_type)
+
+    @property
+    def morphology(self):
+        a = self.analyses.get('guess')
+        return a.morphology if a else ''
+
+    @property
+    def lemma(self):
+        a = self.analyses.get('guess')
+        return a.lemma if a else ''
+
+    @property
+    def pos(self):
+        a = self.analyses.get('guess')
+        return a.pos if a else ''
+
 
 
 detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
 
 
-class Sentence(NamedTuple):
+@dataclasses.dataclass
+class Sentence(DataClassMixin):
     tokens: List[SentenceToken]
+    formatting: bool = False
 
     def as_text(self):
-        return detokenizer.detokenize([t.text for t in self.tokens])
-
-
-class FinSentence(Sentence):
-
-    def as_text(self):
-        return ''.join(
-            f'{t.text.capitalize() if t.cap else t.text}{t.spaces_after}'
-            for t in self.tokens
-        )
+        if self.formatting:
+            s = ''.join(
+                f'{t.text.capitalize() if t.cap else t.text}{t.spaces_after}'
+                for t in self.tokens
+            )
+        else:
+            s = detokenizer.detokenize([t.text for t in self.tokens])
+        return s.capitalize()

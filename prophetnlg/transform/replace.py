@@ -22,17 +22,18 @@ class LemmaReplaceStreamTransform(SentenceTransform):
         self,
         generator,
         replacement_stream: Iterable[SentenceToken],
-        replace_pos: Iterable[str] = ('A', 'N', 'V'),
+        replace_pos: Sequence[str] = ('A', 'N', 'V'),
         token_filter: TokenFilter = TokenFilter(),
         fill_policy: FillPolicy = FillPolicy.IGNORE
     ):
         self.generator = generator
-        self.token_filter = token_filter
         self.replace_pos = replace_pos
+        self.token_filter = token_filter
+        self.fill_policy = fill_policy
         n = len(replace_pos)
         pos_streams = itertools.tee(replacement_stream, n)
         self._replacement_streams = {
-            pos: filter(lambda x, pos=pos: x.pos == pos, stream)
+            pos: filter((lambda x, pos=pos: x.pos == pos), stream)
             for pos, stream in zip(replace_pos, pos_streams)
         }
 
@@ -49,10 +50,10 @@ class LemmaReplaceStreamTransform(SentenceTransform):
             if self.fill_policy == FillPolicy.IGNORE:
                 return token
             else:
-                raise TypeError('Stream for category {category} drained!')
+                raise TypeError('Stream for pos {token.pos} drained!')
 
     def transform(self, sentence: Sentence) -> Sentence:
-        return sentence._replace(
+        return sentence.replace(
             tokens=[
                 self._replace(t) for t in sentence.tokens
                 if self.token_filter.match(t)
@@ -67,8 +68,8 @@ class LemmaMapStreamTransform(LemmaReplaceStreamTransform):
 
     def _get_replacement(self, token: SentenceToken) -> SentenceToken:
         pos = token.pos
-        replacement = self._lemma_mappings[pos].get(token.root)
+        replacement = self._lemma_mappings[pos].get(token.lemma)
         if not replacement:
             replacement = next(self._replacement_streams[pos])
-            self._lemma_mappings[pos][token.root] = replacement
+            self._lemma_mappings[pos][token.lemma] = replacement
         return self.generator.token_with_new_lemma(token, replacement)

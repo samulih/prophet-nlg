@@ -4,8 +4,8 @@ from typing import Callable, Mapping, MutableMapping, Sequence, Union
 
 class WordAnnotationTransform:
     def _annotate(self, sentence: Sentence, category_func: Callable) -> Sentence:
-        return sentence._replace(tokens=[
-                token._replace(category=category_func(token))
+        return sentence.replace(tokens=[
+                token.replace(category=category_func(token))
                 for token in sentence.tokens
             ]
         )
