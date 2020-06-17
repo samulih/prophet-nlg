@@ -16,13 +16,13 @@ class WordAnalysis:
     morphologies: Optional[List[str]] = None
 
     def get_morphologies(self):
-        return set(self.morphologies)
+        return set(m for m in self.morphologies if '+' in m)
 
     def get_lemmas(self):
-        return {m.split('+', 1)[0] for m in self.morphologies}
+        return {m.split('+', 1)[0] for m in self.morphologies if '+' in m}
 
     def get_pos(self):
-        return {m.split('+', 2)[1] for m in self.morphologies}
+        return {m.split('+', 2)[1] for m in self.morphologies if '+' in m}
 
     @property
     def morphology(self):
@@ -88,5 +88,5 @@ class Sentence(DataClassMixin):
                 for t in self.tokens
             )
         else:
-            s = detokenizer.detokenize([t.text for t in self.tokens])
-        return s.capitalize()
+            s = detokenizer.detokenize([t.text for t in self.tokens]).replace('``', ' "')
+        return s.capitalize().strip()

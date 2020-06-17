@@ -29,8 +29,8 @@ class UDTokenizer(TokenizerBase):
     def _parse_ud_sentence(self, ud_sentence: UD_sentence) -> Sentence:
         tokens = [self._parse_ud_node(node) for node in ud_sentence]
         if tokens:
-            # Remove whitespace from last token
-            tokens[-1] = tokens[-1].replace(spaces_after='')
+            # single whitespace after last token
+            tokens[-1] = tokens[-1].replace(spaces_after=' ')
         return Sentence(tokens=tokens, formatting=True)
 
     def tokenize(self, text: str) -> Iterator[Sentence]:

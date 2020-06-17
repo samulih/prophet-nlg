@@ -1,4 +1,5 @@
 from typing import Set
+import pytest
 import unittest
 from prophetnlg import SentenceToken
 from prophetnlg.analysis.fin import (
@@ -35,6 +36,7 @@ class TestFinCGSentenceAnalyzer(TestFinSentenceAnalyzer):
     analyzer_class = FinCGSentenceAnalyzer
 
 
+@pytest.mark.slow
 class TestFinUDSentenceAnalyzer(TestFinSentenceAnalyzer):
     analysis_type = 'ud'
     analyzer_class = FinUDSentenceAnalyzer
@@ -45,6 +47,7 @@ class TestFinHeuristicSentenceAnalyzer(TestFinSentenceAnalyzer):
     analyzer_class = FinHeuristicSentenceAnalyzer
 
 
+@pytest.mark.slow
 class TestFinUDHeuristicAnalyzer(TestFinSentenceAnalyzer):
     analysis_type = 'guess'
     analyzer_class = FinHeuristicUDSentenceAnalyzer

@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from enum import Enum
 import itertools
@@ -12,23 +13,16 @@ class FillPolicy(str, Enum):
     CYCLE = 'cycle'
 
 
-class TokenFilter:
-    def match(self, token: SentenceToken) -> bool:
-        return True
-
-
 class LemmaReplaceStreamTransform(SentenceTransform):
     def __init__(
         self,
         generator,
         replacement_stream: Iterable[SentenceToken],
         replace_pos: Sequence[str] = ('A', 'N', 'V'),
-        token_filter: TokenFilter = TokenFilter(),
         fill_policy: FillPolicy = FillPolicy.IGNORE
     ):
         self.generator = generator
         self.replace_pos = replace_pos
-        self.token_filter = token_filter
         self.fill_policy = fill_policy
         n = len(replace_pos)
         pos_streams = itertools.tee(replacement_stream, n)
@@ -54,10 +48,7 @@ class LemmaReplaceStreamTransform(SentenceTransform):
 
     def transform(self, sentence: Sentence) -> Sentence:
         return sentence.replace(
-            tokens=[
-                self._replace(t) for t in sentence.tokens
-                if self.token_filter.match(t)
-            ]
+            tokens=[self._replace(t) for t in sentence.tokens]
         )
 
 

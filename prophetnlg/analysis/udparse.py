@@ -23,8 +23,43 @@ UPOS_TO_POS_MAP = {
     'X': 'Forgn'
 }
 
+tags = [
+    'N', 'A', 'Num', 'Pron', 'V', 'Adv', 'Adp', 'Pcle', 'Interj',
+    'CC', 'CS',
+    'Prop',
+    # Derivations
+    'Der/minen', 'Der/maisilla', 'Der/ja', 'Der/tar', 'Der/ttaa', 'Der/tattaa',
+    'Der/tatuttaa', '+Der/u', '+Der/inen', '+Der/llinen',
+    # Adverbs and adpositions
+    'Prl', 'Dis',
+    'Po', 'Prs',
+    # Adjectives
+    'Comp', 'Superl',
+    'Card', 'Ord', 'Rom',
+    # Verbs
+    'Neg',
+    'Act', 'Pss',
+    'InfA', 'InfE', 'InfMa', 'Ind', 'Imprt', 'Cond', 'Pot',
+    'Prs', 'Prt', 'PrfPrc', 'PrsPrc', 'ConNeg', 'NegPrc', 'AgPrc',
+    # Pronouns
+    'Pers', 'Dem', 'Interr', 'Rel', 'Qua', 'Reflex', 'Recipr',
+    # Singular/plural
+    'Sg', 'Pl',
+    'Sg1', 'Sg2',' Sg3', 'Pl1', 'Pl2', 'Pl3',
+    # Nominal declination
+    'Nom', 'Par', 'Acc', 'Gen', 'Ine', 'Ela', 'Ill', 'Ade', 'Abl', 'All', 'Ess', 'Tra', 'Abe', 'Com',
+    # Verb possessive suffixes
+    'PxSg1', 'PxSg2', 'PxSg3', 'PxPl1', 'PxPl2', 'PxPl3', 'Px3', 'Pe4',
+    # Question and focus particles
+    'Qst', 'Foc/pa', 'Foc/s', 'Foc/ka', 'Foc/han', 'Foc/kin', 'Foc/kaan'
+]
 
-# NOTE: taken from Omorfi `get_ftb_feats` and modified to not exit on error
+tag_indexes = {tag: idx for idx, tag in enumerate(tags)}
+
+
+# NOTE: taken originally from Omorfi `get_ftb_feats`
+# modified to not exit on error, plus changed the logic to
+# have deterministic output regards to feat order
 def get_morphology_parts(node: UD_node) -> List[str]:
     lemma, pos = node.lemma, node.pos
     feats = dict(f.split('=', 1) for f in node.get_feats() if '=' in f)
@@ -168,7 +203,7 @@ def get_morphology_parts(node: UD_node) -> List[str]:
             if value in ['NUT', 'VA']:
                 rvs += ['Act']
             elif value in ['TU', 'TAVA']:
-                rvs += ['Pass']
+                rvs += ['Pss']
             else:
                 continue
         elif key == 'Reflex':
@@ -313,7 +348,9 @@ def get_morphology_parts(node: UD_node) -> List[str]:
             if r != 'Card':
                 revs += [r]
         rvs = revs
-    return rvs
+
+    order = tag_indexes
+    return sorted(rvs, key=lambda x: order.get(x, 15))
 
 
 def ud_node_morphology(node: UD_node) -> str:

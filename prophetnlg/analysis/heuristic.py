@@ -1,4 +1,4 @@
-from typing import List, Set, Tuple
+from typing import Iterable, List, Set, Tuple
 from prophetnlg import Sentence, SentenceToken, WordAnalysis
 from .cg import CGSentenceAnalyzer
 from .nltk import SentenceAnalyzer
@@ -6,8 +6,10 @@ from .ud import UDSentenceAnalyzer
 from .uralic import UralicSentenceAnalyzer
 
 
-def pick_morphology(text, *sources : List[str]) -> str:
-    all_morphologies = list(set().union(*sources))
+def pick_morphology(text, *sources : Iterable[str]) -> str:
+    all_morphologies : List[str] = list(set().union(*sources))
+    if not all_morphologies:
+        return f'{text}+Unkwn'
     parts = [m.split() for m in all_morphologies]
     in_sources = [[(m in s) for s in sources] for m in all_morphologies]
     morphologies_in_sources = zip(all_morphologies, in_sources, parts)
@@ -15,9 +17,12 @@ def pick_morphology(text, *sources : List[str]) -> str:
     sorted_morphologies = sorted(
         morphologies_in_sources,
         key=lambda m_i_p: (
-            m_i_p[1],                              # present in many sources
-            m_i_p[2][0] == m_i_p[2][0].lower(),   # lemma is lowercase
-            m_i_p[0].count('Use/Hyphen') == text.count('-'), # annotated dash counts
+            # present in many sources
+            m_i_p[1],
+            # lemma is lowercase
+            m_i_p[2][0] == m_i_p[2][0].lower(),
+            # dash annotations match the lemma
+            m_i_p[0].count('Use/Hyphen') == text.count('-'),
         ),
         reverse=True
     )
@@ -32,14 +37,13 @@ class HeuristicMixin:
 
     def get_morphology(self, token: SentenceToken) -> str:
         morphologies = self.get_morphologies_by_sources(token)
-        common = set().intersection(*morphologies)
+        common = set.intersection(*morphologies)
         if len(common) == 1:
             return common.pop()
         return pick_morphology(token.text, common, *morphologies)
 
     def analyze_token(self, token: SentenceToken, **kwargs) -> SentenceToken:
         morphology = self.get_morphology(token)
-        lemma, pos, *_ = morphology.split('+')
         return token.with_morphologies([morphology], 'guess')
 
     def analyze_sentence(self, sentence: Sentence) -> Sentence:
