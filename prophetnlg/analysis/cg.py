@@ -1,3 +1,4 @@
+import difflib
 from typing import Iterable, Iterator, List, Optional, Tuple
 from prophetnlg import Sentence, SentenceToken, WordAnalysis
 from uralicNLP import cg3, dependency, uralicApi
@@ -5,6 +6,13 @@ from uralicNLP.ud_tools import UD_node, UD_sentence
 from .nltk import SentenceAnalyzer
 
 Cg3Token = Tuple[str, List[cg3.Cg3Word]]
+
+
+def get_matched_indexes(a: List[str], b: List[str]) -> Iterator[Tuple[int, int]]:
+    s = difflib.SequenceMatcher(None, a, b)
+    for tag, i1, i2, j1, j2 in s.get_opcodes():
+        if tag == 'equal':
+            yield i1, i2
 
 
 class CGSentenceAnalyzer(SentenceAnalyzer):
@@ -15,7 +23,16 @@ class CGSentenceAnalyzer(SentenceAnalyzer):
     def disambiguate(self, words: Iterable[str]) -> List[Cg3Token]:
         words = list(words)
         cg_tokens = self.cg.disambiguate(words)
-        assert len(words) == len(cg_tokens)
+
+        # CG disambiguation may return tokens that are not part of original,
+        # so let's remove them!
+        if len(cg_tokens) > len(words):
+            new_tokens = []
+            for i1, i2 in get_matched_indexes([t[0] for t in cg_tokens], words):
+                new_tokens.extend(cg_tokens[i1:i2])
+            cg_tokens = new_tokens
+
+        assert len(cg_tokens) == len(words)
         return cg_tokens
 
     def analyze_sentence(self, sentence: Sentence) -> Sentence:

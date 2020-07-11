@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
 import sqlite3
-from typing import Optional, Tuple, Union
+from typing import cast, Optional, Tuple, Union
 from uralicNLP import uralicApi, semfi
 from prophetnlg import SentenceToken
+from .base import SentenceTokenGeneratorBase
+
 
 cache_path = Path(uralicApi.__where_models('fin')) / 'cache.db'
 semfi_db = semfi.__get_connection('fin')
@@ -40,12 +42,7 @@ def find_similar_and_suffix(word: str, pos: str) -> Tuple[str, str]:
         return ('Mikael', '')
 
 
-class SentenceTokenGenerator:
-    language = 'finnish'
-    lang = 'fin'
-
-    def __init__(self):
-        self.similar_cache = {}
+class SentenceTokenGenerator(SentenceTokenGeneratorBase):
 
     def _generate(self, analysis: str, similar_token: SentenceToken = None) -> Optional[str]:
         results = uralicApi.generate(analysis, language=self.lang)
@@ -53,6 +50,7 @@ class SentenceTokenGenerator:
             return None
         words = [r[0] for r in results]
         if similar_token:
+            # similar_token = cast(SentenceToken, similar_token)
             # return the word that ends most similarly to reference token
             return sorted(
                 words,
@@ -84,7 +82,7 @@ class SentenceTokenGenerator:
             # starts with lower case, treat as a common noun
             if '+N+Prop+' in new_morphology:
                 new_morphology = new_morphology.replace('+N+Prop+', '+N+')
-        new_word = self._generate(new_morphology, similar_token=token)
+        new_word = self._generate(new_morphology, similar_token=token) or ''
         return token\
             .replace(text=new_word, analyses={})\
             .with_morphologies([new_morphology], 'guess')

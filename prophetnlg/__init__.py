@@ -1,18 +1,18 @@
 from __future__ import annotations
-import dataclasses
 from typing import Any, Generic, Dict, List, Optional
 import nltk
+from pydantic import BaseModel
 
 
 class DataClassMixin:
     def replace(self, **attrs):
-        return dataclasses.replace(self, **attrs)
+        data = dict(self.dict(), **attrs)
+        return type(self).construct(self.__fields_set__, **data)
 
 
-@dataclasses.dataclass
-class WordAnalysis:
-    text: str
-    original: Any = None
+class WordAnalysis(BaseModel, DataClassMixin):
+    text: str = ''
+    original: Optional[Any] = None
     morphologies: Optional[List[str]] = None
 
     def get_morphologies(self):
@@ -40,20 +40,20 @@ class WordAnalysis:
         return next(iter(pos)) if len(pos) == 1 else ''
 
 
-@dataclasses.dataclass
-class SentenceToken(DataClassMixin):
-    text: str
+class SentenceToken(BaseModel, DataClassMixin):
+    text: str = ''
     lang: str = ''
-    analyses: Dict[str, WordAnalysis] = dataclasses.field(default_factory=dict)
+    analyses: Dict[str, WordAnalysis] = {}
     spaces_after: str = ' '
     cap: bool = False
+    passthrough: bool = False
 
     def with_analysis(self, analysis: WordAnalysis, analysis_type: str) -> SentenceToken:
         analyses = dict(self.analyses, **{analysis_type: analysis})
         return self.replace(analyses=analyses)
 
     def with_morphologies(self, morphologies: List[str], analysis_type: str) -> SentenceToken:
-        analysis = WordAnalysis(self.text, original=None, morphologies=morphologies)
+        analysis = WordAnalysis(text=self.text, original=None, morphologies=morphologies)
         return self.with_analysis(analysis, analysis_type)
 
     @property
@@ -76,10 +76,10 @@ class SentenceToken(DataClassMixin):
 detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
 
 
-@dataclasses.dataclass
-class Sentence(DataClassMixin):
+class Sentence(BaseModel, DataClassMixin):
     tokens: List[SentenceToken]
     formatting: bool = False
+    passthrough: int = 0
 
     def as_text(self):
         if self.formatting:

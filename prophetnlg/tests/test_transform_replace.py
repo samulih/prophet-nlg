@@ -1,6 +1,7 @@
+from collections import defaultdict
 import itertools
 import os
-from typing import Iterator
+from typing import Iterator, List, Mapping
 import pytest
 import unittest
 from prophetnlg import SentenceToken
@@ -21,33 +22,35 @@ class TestMixin:
         self.analyzer = self.analyzer_class()
         self.generator = SentenceTokenGenerator()
 
-    def _get_text_tokens(self, text: str) -> Iterator[SentenceToken]:
+    def _get_tokens_dict(self, text: str) -> Mapping[str, List[SentenceToken]]:
         sentences = self.analyzer.analyze_text(text)
-        for sentence in sentences:
-            for token in sentence.tokens:
-                yield token
+        tokens = [t for s in sentences for t in s.tokens]
+        tokens_dict = defaultdict(list)
+        for t in tokens:
+            tokens_dict[t.pos].append(t)
+        return tokens_dict
 
 
 class TestReplaceTransform(TestMixin, unittest.TestCase):
     analyzer_class : type = FinHeuristicSentenceAnalyzer
 
     def test_replace_stream_transform_noun(self):
-        replacements = self._get_text_tokens('Pöllöt miettivät syviä ajatuksia.')
+        replacements = self._get_tokens_dict('Pöllöt miettivät syviä ajatuksia.')
+        replacements = {pos: stream for pos, stream in replacements.items() if pos == 'N'}
         transform = LemmaReplaceStreamTransform(
             generator=self.generator,
-            replacement_stream=replacements,
-            replace_pos=['N']
+            replacements=replacements
         )
-        source_sentence = next(self.analyzer.analyze_text('Pelle hyppäsi veteen.'))
+        source_sentence = next(self.analyzer.analyze_text('Pelle hyppäsi tummaan veteen.'))
         new_sentence = transform.transform(source_sentence)
-        self.assertEqual(new_sentence.as_text(), 'Pöllö hyppäsi ajatukseen.')
+        self.assertEqual(new_sentence.as_text(), 'Pöllö hyppäsi tummaan ajatukseen.')
 
     def test_replace_stream_transform_adj_noun(self):
-        replacements = self._get_text_tokens('Pöllöt miettivät syviä ajatuksia.')
+        replacements = self._get_tokens_dict('Pöllöt miettivät syviä ajatuksia.')
+        replacements = {pos: stream for pos, stream in replacements.items() if pos in ('N', 'A')}
         transform = LemmaReplaceStreamTransform(
             generator=self.generator,
-            replacement_stream=replacements,
-            replace_pos=['N', 'A']
+            replacements=replacements
         )
         source_sentence = next(self.analyzer.analyze_text('Pelle hyppäsi hassun aamun sarastaessa.'))
         new_sentence = transform.transform(source_sentence)
@@ -57,15 +60,16 @@ class TestReplaceTransform(TestMixin, unittest.TestCase):
         bible = os.path.join(DATA_DIR, 'vt_1moos_1_2.txt')
         jokes = os.path.join(DATA_DIR, 'vitsit.txt')
         with open(jokes) as j, open(bible) as b:
-            text = b.read()
+            text = b.read()[:1000]
             # TurkuNLP parses ________ as a noun
-            joke_text = j.read().replace('_', '')
-            replacements = self._get_text_tokens(joke_text)
+            joke_text = j.read().replace('_', '')[:1000]
+
+        replacements = self._get_tokens_dict(joke_text)
+        replacements = {pos: stream for pos, stream in replacements.items() if pos in ('N', 'A')}
 
         transform = LemmaReplaceStreamTransform(
             generator=self.generator,
-            replacement_stream=replacements,
-            replace_pos=['N', 'A']
+            replacements=replacements
         )
         sentences = self.analyzer.analyze_text(text)
         result = [transform.transform(s).as_text() for s in itertools.islice(sentences, 5)]
@@ -84,11 +88,11 @@ class TestMapTransform(TestMixin, unittest.TestCase):
     analyzer_class : type = FinHeuristicSentenceAnalyzer
 
     def test_map_stream_transform(self):
-        replacements = self._get_text_tokens('Pöllöt miettivät syviä ajatuksia aamulla.')
+        replacements = self._get_tokens_dict('Pöllöt miettivät syviä ajatuksia aamulla.')
+        replacements = {pos: stream for pos, stream in replacements.items() if pos in ('N', 'A')}
         transform = LemmaMapStreamTransform(
             generator=self.generator,
-            replacement_stream=replacements,
-            replace_pos=['N', 'A']
+            replacements=replacements
         )
         source_sentence = next(self.analyzer.analyze_text('Jarno hyppäsi veteen - veden pintaa ui hassu Jarno.'))
         new_sentence = transform.transform(source_sentence)
@@ -98,15 +102,16 @@ class TestMapTransform(TestMixin, unittest.TestCase):
         bible = os.path.join(DATA_DIR, 'vt_1moos_1_2.txt')
         jokes = os.path.join(DATA_DIR, 'vitsit.txt')
         with open(jokes) as j, open(bible) as b:
-            text = b.read()
+            text = b.read()[:1000]
             # TurkuNLP parses ____ as a noun
-            joke_text = j.read().replace('_', '')
-            replacements = self._get_text_tokens(joke_text)
+            joke_text = j.read().replace('_', '')[:1000]
+
+        replacements = self._get_tokens_dict(joke_text)
+        replacements = {pos: stream for pos, stream in replacements.items() if pos in ('N', 'A')}
 
         transform = LemmaMapStreamTransform(
             generator=self.generator,
-            replacement_stream=replacements,
-            replace_pos=['N', 'A']
+            replacements=replacements
         )
         sentences = self.analyzer.analyze_text(text)
         result = [transform.transform(s).as_text() for s in itertools.islice(sentences, 5)]

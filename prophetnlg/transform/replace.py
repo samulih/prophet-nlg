@@ -1,10 +1,12 @@
+import abc
 import re
 from collections import defaultdict
 from enum import Enum
 import itertools
-from typing import Callable, Iterable, Mapping, MutableMapping, Sequence, Union
+from typing import Callable, Dict, Iterable, Iterator, Mapping, MutableMapping, Sequence, Union
 from prophetnlg import Sentence, SentenceToken
-from .base import SentenceTransform
+from prophetnlg.generator.base import SentenceTokenGeneratorBase
+from .base import SentenceTransformBase, ConfigBase
 
 
 class FillPolicy(str, Enum):
@@ -13,54 +15,71 @@ class FillPolicy(str, Enum):
     CYCLE = 'cycle'
 
 
-class LemmaReplaceStreamTransform(SentenceTransform):
-    def __init__(
-        self,
-        generator,
-        replacement_stream: Iterable[SentenceToken],
-        replace_pos: Sequence[str] = ('A', 'N', 'V'),
-        fill_policy: FillPolicy = FillPolicy.IGNORE
-    ):
-        self.generator = generator
-        self.replace_pos = replace_pos
-        self.fill_policy = fill_policy
-        n = len(replace_pos)
-        pos_streams = itertools.tee(replacement_stream, n)
-        self._replacement_streams = {
-            pos: filter((lambda x, pos=pos: x.pos == pos), stream)
-            for pos, stream in zip(replace_pos, pos_streams)
+class LemmaStreamConfig(ConfigBase):
+    generator: SentenceTokenGeneratorBase
+    fill_policy: FillPolicy = FillPolicy.IGNORE
+    replacements: Dict[str, Iterable[SentenceToken]]
+
+
+class LemmaReplaceStreamConfig(LemmaStreamConfig):
+    pass
+
+
+class LemmaMapStreamConfig(LemmaStreamConfig):
+    lemma_mappings: Mapping[str, Mapping[str, SentenceToken]] = defaultdict(dict)
+
+
+class LemmaMapReplaceTransformBase(SentenceTransformBase):
+    config_class = LemmaStreamConfig
+    config: LemmaStreamConfig
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.replacement_streams = {
+            k: iter(v) for k, v in self.config.replacements.items()
         }
 
-    def _get_replacement(self, token: SentenceToken) -> SentenceToken:
-        replacement = next(self._replacement_streams[token.pos])
-        return self.generator.token_with_new_lemma(token, replacement)
+    @abc.abstractmethod
+    def get_replacement(self, token: SentenceToken) -> SentenceToken:
+        pass
 
     def _replace(self, token: SentenceToken) -> SentenceToken:
-        if token.pos not in self.replace_pos:
+        if token.passthrough or not self.is_replaceable(token):
             return token
         try:
-            return self._get_replacement(token)
+            return self.get_replacement(token)
         except StopIteration:
-            if self.fill_policy == FillPolicy.IGNORE:
+            if self.config.fill_policy == FillPolicy.IGNORE:
                 return token
             else:
                 raise TypeError('Stream for pos {token.pos} drained!')
 
-    def transform(self, sentence: Sentence) -> Sentence:
+    def is_replaceable(self, token: SentenceToken):
+        return token.pos in self.replacement_streams
+
+    def get_sentence(self, sentence: Sentence) -> Sentence:
         return sentence.replace(
             tokens=[self._replace(t) for t in sentence.tokens]
         )
 
 
-class LemmaMapStreamTransform(LemmaReplaceStreamTransform):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._lemma_mappings = defaultdict(dict)
+class LemmaReplaceStreamTransform(LemmaMapReplaceTransformBase):
+    config_class = LemmaReplaceStreamConfig
+    config: LemmaReplaceStreamConfig
 
-    def _get_replacement(self, token: SentenceToken) -> SentenceToken:
+    def get_replacement(self, token: SentenceToken) -> SentenceToken:
+        new_lemma = next(self.replacement_streams[token.pos])
+        return self.config.generator.token_with_new_lemma(token, new_lemma)
+
+
+class LemmaMapStreamTransform(LemmaMapReplaceTransformBase):
+    config_class = LemmaMapStreamConfig
+    config: LemmaMapStreamConfig
+
+    def get_replacement(self, token: SentenceToken) -> SentenceToken:
         pos = token.pos
-        replacement = self._lemma_mappings[pos].get(token.lemma)
+        replacement = self.config.lemma_mappings[pos].get(token.lemma)
         if not replacement:
-            replacement = next(self._replacement_streams[pos])
-            self._lemma_mappings[pos][token.lemma] = replacement
-        return self.generator.token_with_new_lemma(token, replacement)
+            replacement = next(self.replacement_streams[pos])
+            self.config.lemma_mappings[pos][token.lemma] = replacement
+        return self.config.generator.token_with_new_lemma(token, replacement)

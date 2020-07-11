@@ -7,7 +7,7 @@ class TenseTransform:
     def __init__(self, generator: SentenceTokenGenerator):
         self.generator = generator
 
-    def can_change_verb_tense(self, token: SentenceToken):
+    def can_change_verb_tense(self, token: SentenceToken) -> bool:
         if any(m in token.morphology for m in ('ConNeg', 'InfMa')):
             return False
         return True
