@@ -44,7 +44,7 @@ class LemmaMapReplaceTransformBase(SentenceTransformBase):
         pass
 
     def _replace(self, token: SentenceToken) -> SentenceToken:
-        if token.passthrough or not self.is_replaceable(token):
+        if token.passthrough or token.pos not in self.replacement_streams:
             return token
         try:
             return self.get_replacement(token)
@@ -53,9 +53,6 @@ class LemmaMapReplaceTransformBase(SentenceTransformBase):
                 return token
             else:
                 raise TypeError('Stream for pos {token.pos} drained!')
-
-    def is_replaceable(self, token: SentenceToken):
-        return token.pos in self.replacement_streams
 
     def get_sentence(self, sentence: Sentence) -> Sentence:
         return sentence.replace(

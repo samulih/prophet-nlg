@@ -77,7 +77,7 @@ detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()
 
 
 class Sentence(BaseModel, DataClassMixin):
-    tokens: List[SentenceToken]
+    tokens: List[SentenceToken] = []
     formatting: bool = False
     passthrough: int = 0
 
