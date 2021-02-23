@@ -1,6 +1,5 @@
-import abc
 from collections import deque
-from typing import Any, Deque, Iterable, Optional, Union
+from typing import Any, Deque, Iterable, List, Optional, Sequence
 from prophetnlg import Sentence, SentenceToken
 from .base import ConfigBase, SentenceTransformBase
 
@@ -13,6 +12,9 @@ class SentenceDelayConfig(ConfigBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.buffer = deque(self.buffer, self.buffer_size)
+
+    def reset(self):
+        self.buffer.clear()
 
 
 class SentenceDelayTransform(SentenceTransformBase):
@@ -34,4 +36,4 @@ class SentenceDelayTransform(SentenceTransformBase):
             yield from self.config.buffer
             if not self.config.looping:
                 break
-        self.config.buffer.clear()
+        self.config.reset()

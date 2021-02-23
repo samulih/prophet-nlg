@@ -1,14 +1,7 @@
-from typing import Any, ClassVar, Generic, Iterable, Mapping, Optional, Type, TypeVar, Union
+from typing import Any, ClassVar, Iterable, List, Mapping, Optional, Sequence, Type
 from pydantic import BaseModel
 from prophetnlg import Sentence, SentenceToken
-
-
-T = TypeVar('T')
-
-
-class ConfigBase(BaseModel, Generic[T]):
-    def reset(self) -> None:
-        pass
+from prophetnlg.module import ConfigBase
 
 
 class TransformBase:
@@ -20,12 +13,14 @@ class TransformBase:
     def __init__(self, config: Optional[ConfigBase] = None, **kwargs):
         if config:
             assert isinstance(config, self.config_class)
+            assert not kwargs
             self.config = config
         else:
             self.config = self.config_class(**kwargs)
+        self.original_config = self.config.copy()
 
     def reset(self):
-        self.config.reset()
+        self.config = self.original_config
 
 
 class SentenceTransformBase(TransformBase):
@@ -40,6 +35,29 @@ class SentenceTransformBase(TransformBase):
             return sentence
         return self.get_sentence(sentence)
 
+    def transform_sequence(self, sentences: Iterable[Sentence]) -> List[Sentence]:
+        return [self.transform(s) for s in sentences]
+
     def transform_stream(self, sentences: Iterable[Sentence]) -> Iterable[Sentence]:
+        for sentence in sentences:
+            yield self.transform(sentence)
+
+
+class SentenceToTextTransform(TransformBase):
+    inputs = {'sentence': Sentence}
+    outputs = {'text': str}
+
+    def get_text(self, sentence: Sentence) -> str:
+        return sentence.as_text()
+
+    def transform(self, sentence: Sentence) -> str:
+        if sentence.passthrough:
+            return sentence.as_text()
+        return self.get_text(sentence)
+
+    def transform_sequence(self, sentences: Iterable[Sentence]) -> List[str]:
+        return [self.transform(s) for s in sentences]
+
+    def transform_stream(self, sentences: Iterable[Sentence]) -> Iterable[str]:
         for sentence in sentences:
             yield self.transform(sentence)

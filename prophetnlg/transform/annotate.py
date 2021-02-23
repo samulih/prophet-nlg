@@ -24,3 +24,17 @@ class IncTokenPassThroughTransform(TokenAnnotationTransformBase):
 class DecTokenPassThroughTransform(TokenAnnotationTransformBase):
     def annotate(self, token: SentenceToken) -> SentenceToken:
         return token.replace(passthrough=max(token.passthrough - 1, 0))
+
+
+
+class IncSentencePassThroughTransform(SentenceTransformBase):
+    def passthrough_sentence(self, token: Sentence) -> int:
+        return 1
+
+    def get_sentence(self, sentence: Sentence) -> Sentence:
+        return sentence.replace(passthrough=sentence.passthrough + self.passthrough_sentence(sentence))
+
+
+class DecSentencePassThroughTransform(SentenceTransformBase):
+    def get_sentence(self, sentence: Sentence) -> Sentence:
+        return sentence.replace(passthrough=max(sentence.passthrough - 1, 0))

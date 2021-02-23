@@ -1,12 +1,23 @@
-from typing import Mapping
-from prophetnlg import Sentence, SentenceToken
+from enums import Enum
+from typing import Dict, Mapping
+from prophetnlg import ConfigBase, Sentence, SentenceToken
 from prophetnlg.generator.fin import SentenceTokenGenerator
+from ..base import SentenceTransformBase
 
 
-class TenseTransform:
-    def __init__(self, generator: SentenceTokenGenerator):
-        self.generator = generator
+class Tense(str, Enum):
+    PLUPERFECT = 'PLUPERFECT'
+    PERFECT = 'PERFECT'
+    IMPERFECT = 'IMPERFECT'
+    PRESENT = 'PRESENT'
 
+
+class TenseConfig(ConfigBase):
+    generator: SentenceTokenGenerator
+    tense_mapping: Dict[Tense, Tense]
+
+
+class TenseTransform(SentenceTransformBase):
     def can_change_verb_tense(self, token: SentenceToken) -> bool:
         if any(m in token.morphology for m in ('ConNeg', 'InfMa')):
             return False

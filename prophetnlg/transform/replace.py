@@ -2,8 +2,8 @@ import abc
 import re
 from collections import defaultdict
 from enum import Enum
-import itertools
 from typing import Callable, Dict, Iterable, Iterator, Mapping, MutableMapping, Sequence, Union
+from more_itertools import always_iterable
 from prophetnlg import Sentence, SentenceToken
 from prophetnlg.generator.base import SentenceTokenGeneratorBase
 from .base import SentenceTransformBase, ConfigBase
@@ -12,7 +12,6 @@ from .base import SentenceTransformBase, ConfigBase
 class FillPolicy(str, Enum):
     IGNORE = 'ignore'
     ERROR = 'error'
-    CYCLE = 'cycle'
 
 
 class LemmaStreamConfig(ConfigBase):
@@ -36,7 +35,7 @@ class LemmaMapReplaceTransformBase(SentenceTransformBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.replacement_streams = {
-            k: iter(v) for k, v in self.config.replacements.items()
+            k: always_iterable(v) for k, v in self.config.replacements.items()
         }
 
     @abc.abstractmethod
