@@ -6,17 +6,16 @@ from pydantic import BaseModel
 
 class DataClassMixin:
     def replace(self, **attrs):
-        data = dict(self.dict(), **attrs)
-        return type(self).construct(self.__fields_set__, **data)
+        return self.copy(update=attrs)
 
 
 class WordAnalysis(BaseModel, DataClassMixin):
     text: str = ''
     original: Optional[Any] = None
-    morphologies: Optional[List[str]] = None
+    morphologies: Dict[str, float] = {}
 
-    def get_morphologies(self):
-        return set(m for m in self.morphologies if '+' in m)
+    def get_morphologies(self) -> Set[str]:
+        return {m for m in self.morphologies if '+' in m}
 
     def get_lemmas(self):
         return {m.split('+', 1)[0] for m in self.morphologies if '+' in m}
@@ -52,9 +51,12 @@ class SentenceToken(BaseModel, DataClassMixin):
         analyses = dict(self.analyses, **{analysis_type: analysis})
         return self.replace(analyses=analyses)
 
-    def with_morphologies(self, morphologies: List[str], analysis_type: str) -> SentenceToken:
-        analysis = WordAnalysis(text=self.text, original=None, morphologies=morphologies)
+    def with_weighted_morphologies(self, weights: Dict[str, float], analysis_type: str) -> SentenceToken:
+        analysis = WordAnalysis(text=self.text, original=None, morphologies=weights)
         return self.with_analysis(analysis, analysis_type)
+
+    def with_morphologies(self, morphologies: List[str], analysis_type: str) -> SentenceToken:
+        return self.with_weighted_morphologies(dict.fromkeys(morphologies, 0.0), analysis_type)
 
     @property
     def morphology(self):
@@ -70,7 +72,6 @@ class SentenceToken(BaseModel, DataClassMixin):
     def pos(self):
         a = self.analyses.get('guess')
         return a.pos if a else ''
-
 
 
 detokenizer = nltk.tokenize.treebank.TreebankWordDetokenizer()

@@ -8,7 +8,6 @@ from .base import SentenceTokenGeneratorBase
 
 
 cache_path = Path(uralicApi.__where_models('fin')) / 'cache.db'
-semfi_db = semfi.__get_connection('fin')
 cache_db = sqlite3.connect(cache_path.as_posix())
 
 
@@ -50,7 +49,6 @@ class SentenceTokenGenerator(SentenceTokenGeneratorBase):
             return None
         words = [r[0] for r in results]
         if similar_token:
-            # similar_token = cast(SentenceToken, similar_token)
             # return the word that ends most similarly to reference token
             return sorted(
                 words,

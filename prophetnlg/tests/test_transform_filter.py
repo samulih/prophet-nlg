@@ -8,6 +8,7 @@ from prophetnlg.transform.filter import (
     StochasticTokenFilterByPosTransform
 )
 
+
 def get_sentence(text: str) -> Sentence:
     analyzer = FinHeuristicSentenceAnalyzer()
     return list(analyzer.analyze_text(text))[0]
@@ -59,4 +60,3 @@ class TestStochasticTokenFilterTransform(unittest.TestCase):
         assert 40 < sum([t.passthrough == 2 for t in sentence_f2.tokens]) < 60
         assert all(t.passthrough in (0, 1) for t in sentence_f1.tokens)
         assert all(t.passthrough in (0, 1, 2) for t in sentence_f2.tokens)
-
