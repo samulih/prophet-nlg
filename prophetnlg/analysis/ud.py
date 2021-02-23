@@ -23,7 +23,7 @@ class UDTokenizer(TokenizerBase):
             spaces_after=spaces_after
         )
         m = ud_node_morphology(node)
-        analysis = WordAnalysis(node.form, original=node, morphologies=[m])
+        analysis = WordAnalysis(text=node.form, original=node, morphologies={m: 0.0})
         return token.with_analysis(analysis, 'ud')
 
     def _parse_ud_sentence(self, ud_sentence: UD_sentence) -> Sentence:

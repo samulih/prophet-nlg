@@ -50,6 +50,6 @@ class CGSentenceAnalyzer(SentenceAnalyzer):
                 continue
             yield '+'.join(m for m in [lemma] + morphology_tags if '<' not in m)
 
-    def analyze_token(self, token: SentenceToken, cg_token : Cg3Token = None, **kwargs) -> SentenceToken:
+    def analyze_token(self, token: SentenceToken, cg_token: Cg3Token = None, **kwargs) -> SentenceToken:
         morphologies = list(self._cg_token_morphologies(cg_token))
         return token.with_morphologies(morphologies, 'cg')

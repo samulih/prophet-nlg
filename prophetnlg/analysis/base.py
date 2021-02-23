@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, List, Optional
+from typing import Dict, Iterable, Iterator, List, Optional
 import nltk
 from prophetnlg import Sentence, SentenceToken, WordAnalysis
 
@@ -21,6 +21,9 @@ class SentenceAnalyzerBase:
         self.lang = self.lang or kwargs.get('lang')
         self.language = self.language or kwargs.get('language')
         self.tokenizer = self.tokenizer_class(lang=self.lang, language=self.language)
+
+    def get_weights(self, token: SentenceToken) -> Dict[str, float]:
+        return {}
 
     def analyze_token(self, token: SentenceToken, **kwargs) -> SentenceToken:
         return token
